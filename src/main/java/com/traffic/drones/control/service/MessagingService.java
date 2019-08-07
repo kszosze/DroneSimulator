@@ -15,6 +15,7 @@ public class MessagingService {
     private JmsTemplate jmsTemplate;
 
     public void send(String queue, MoveToMessage message) {
+        log.warn("Send Message {}", message);
         jmsTemplate.convertAndSend(queue, message);
     }
 

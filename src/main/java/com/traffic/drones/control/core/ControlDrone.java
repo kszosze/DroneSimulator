@@ -5,14 +5,14 @@ import com.traffic.drones.control.model.MoveToMessage;
 import com.traffic.drones.control.service.MessagingService;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Stream;
 
 import static com.traffic.drones.control.config.ActiveMQConfig.DRONES_COMMANDS_QUEUE;
 import static com.traffic.drones.control.config.ActiveMQConfig.DRONES_MOVEMENT_QUEUE;
@@ -20,21 +20,22 @@ import static com.traffic.drones.control.config.ActiveMQConfig.DRONES_MOVEMENT_Q
 @Slf4j
 public class ControlDrone implements Runnable {
 
-    private Path coordinatesFile;
+    private InputStream coordinatesFile;
 
     private MessagingService messageService;
 
-    ControlDrone(Path coordinatesFile, MessagingService messageService) {
+    ControlDrone(InputStream coordinatesFile, MessagingService messageService) {
         this.coordinatesFile = coordinatesFile;
         this.messageService = messageService;
     }
 
     @Override
     public void run() {
-        try(Stream<String> lines = Files.lines(coordinatesFile)) {
+        try(BufferedReader reader = new BufferedReader(
+                new InputStreamReader(coordinatesFile))) {
             final AtomicBoolean flag = new AtomicBoolean();
             flag.set(false);
-            lines.forEach(command -> {
+            reader.lines().forEach(command -> {
                 String[] strCommand = command.replace("\"", "").split(",");
 
                 if (!isEndDay(strCommand[3])) {

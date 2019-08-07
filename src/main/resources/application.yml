@@ -1,0 +1,37 @@
+# Embedded ActiveMQ Configuration Example
+spring:
+  activemq:
+    broker-url: vm://localhost?broker.persistent=false
+    password: admin
+    user: admin
+    in-memory: true
+    non-blocking-redelivery: true
+    packages:
+      trust-all: true
+      trusted: com.traffic
+    pool:
+      block-if-full: true
+      block-if-full-timeout: -1
+      create-connection-on-startup: true
+      enabled: false
+      expiry-timeout: 0
+      idle-timeout: 30000
+      max-connections: 1
+      maximum-active-session-per-connection: 500
+      reconnect-on-exception: true
+      time-between-expiration-check: -1
+      use-anonymous-producers: true
+  jms:
+    listener:
+      acknowledge-mode: auto
+      auto-startup: true
+      concurrency: 1
+      max-concurrency: 2
+    pub-sub-domain: true
+    template:
+      default-destination: moves-queue
+      delivery-mode: persistent
+      priority: 100
+      qos-enabled: true
+      receive-timeout: 1000
+      time-to-live: 36000

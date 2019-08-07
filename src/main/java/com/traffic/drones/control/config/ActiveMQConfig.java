@@ -17,8 +17,6 @@ public class ActiveMQConfig {
     public static final String DRONES_COMMANDS_QUEUE = "commands-queue";
     public static final String DRONES_MOVEMENT_QUEUE = "moves-queue";
 
-
-
     @Bean
     public JmsListenerContainerFactory<?> queueListenerFactory() {
         DefaultJmsListenerContainerFactory factory = new DefaultJmsListenerContainerFactory();

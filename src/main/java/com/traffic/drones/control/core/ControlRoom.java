@@ -16,25 +16,20 @@ import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
 import org.springframework.shell.standard.ShellMethodAvailability;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStreamReader;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.stream.Stream;
+import java.util.concurrent.*;
 
 import static com.traffic.drones.control.config.ActiveMQConfig.*;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
+import static org.awaitility.Awaitility.await;
 
 @Slf4j
 @ShellComponent
@@ -69,16 +64,16 @@ public class ControlRoom {
     public String launch() {
 
         try {
-            Path path = Paths.get(ClassLoader.getSystemResource("tube.csv").toURI());
-            try(Stream<String> lines = Files.lines(path)) {
-                lines.forEach(tubeInfo -> {
+            try(BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(ClassLoader.getSystemResourceAsStream("tube.csv")))){
+            reader.lines().forEach(tubeInfo -> {
                     String[] tubeInfoArr = tubeInfo.split(",");
                     tubeMap.put(tubeInfoArr[0],
                             Pair.of(Double.valueOf(tubeInfoArr[1]),
                                     Double.valueOf(tubeInfoArr[2])));
                 });
             }
-        } catch (URISyntaxException | IOException e) {
+        } catch (IOException e) {
             log.error("Upps, something wrong happen", e);
         }
 
@@ -118,9 +113,7 @@ public class ControlRoom {
                             .command("SHUTDOWN")
                             .build());
             executor.shutdown();
-            while (!executor.isTerminated()) {
-            }
-            //System.exit(0);
+            await().atMost(15, TimeUnit.SECONDS).until(() -> executor.isTerminated());
             return "System shutdown";
         } else {
             return "System is already shutting down, please wait";
@@ -146,19 +139,16 @@ public class ControlRoom {
     @ShellMethodAvailability("dronesInAir")
     public String autonomousFly() {
 
-        try {
-            executor.submit(new ControlDrone(
-                    Paths.get(ClassLoader.getSystemResource("6043.csv").toURI()),
-                    messageService)
-            );
+        executor.submit(new ControlDrone(
+                ClassLoader.getSystemResourceAsStream("6043.csv"),
+                messageService)
+        );
 
-            executor.submit(new ControlDrone(
-                    Paths.get(ClassLoader.getSystemResource("5937.csv").toURI()),
-                    messageService)
-            );
-        } catch (URISyntaxException e) {
-            log.error("Had been a problem processing coordinates files", e);
-        }
+        executor.submit(new ControlDrone(
+                ClassLoader.getSystemResourceAsStream("5937.csv"),
+                messageService)
+        );
+
         return "Starting autonomous mode";
     }
 

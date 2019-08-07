@@ -40,7 +40,7 @@ public class Drone implements IDrone {
         this.droneId = droneId;
     }
 
-    @JmsListener(destination = DRONES_COMMANDS_QUEUE)
+    @JmsListener(destination = DRONES_COMMANDS_QUEUE, subscription = DRONES_MOVEMENT_QUEUE)
     public void processCommandsListener(@Payload CommandMessage message) {
         if (droneId.equals(message.getDroneId()) &&
             "SHUTDOWN".equals(message.getCommand())) {
@@ -48,7 +48,7 @@ public class Drone implements IDrone {
         }
     }
 
-    @JmsListener(destination=DRONES_MOVEMENT_QUEUE)
+    @JmsListener(destination=DRONES_MOVEMENT_QUEUE, subscription = DRONES_MOVEMENT_QUEUE)
     public void processMovementsListener(@Payload MoveToMessage message) {
 
         if (droneId.equals(message.getDroneId())) {
@@ -80,47 +80,44 @@ public class Drone implements IDrone {
 
     @Override
     public void run() {
-        while(!shutdown.get()) {
-            MoveToMessage message = messagesQueue.poll();
-            if (message != null) {
-                position = Pair.of(message.getLongitude(), message.getLatitude());
-                tubeMap.entrySet()
-                        .stream()
-                        .filter(tubeData -> isInRange(tubeData.getValue(), position))
-                        .findAny()
-                        .ifPresent(tubeData ->
-                            this.send(ReportMessage
-                                    .builder()
-                                    .droneId(droneId)
-                                    .time(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss").format(ZonedDateTime.now()))
-                                    .speed("60mph")
-                                    .tubeName(tubeData.getKey())
-                                    .status(ReportStatus.values()[new Random().nextInt(3)])
-                                    .build())
-                        );
+
+            while(!shutdown.get()) {
+                MoveToMessage message = messagesQueue.poll();
+                if (message != null) {
+                    position = Pair.of(message.getLongitude(), message.getLatitude());
+                    tubeMap.entrySet()
+                            .stream()
+                            .filter(tubeData -> isInRange(tubeData.getValue(), position))
+                            .findFirst()
+                            .ifPresent(tubeData ->
+                                this.send(ReportMessage
+                                        .builder()
+                                        .droneId(droneId)
+                                        .time(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss").format(ZonedDateTime.now()))
+                                        .speed("60mph")
+                                        .tubeName(tubeData.getKey())
+                                        .status(ReportStatus.values()[new Random().nextInt(3)])
+                                        .build())
+                            );
+                }
+
             }
 
-        }
     }
 
     private boolean isInRange(Pair<Double, Double> tubeData, Pair<Double, Double> dronePosition) {
-
-
-        return 350 > calculateDistanceToPoint(tubeData.getRight(),
+        return (15000/1000) >= calculateDistanceToPoint(tubeData.getRight(),
                 tubeData.getLeft(),
                 dronePosition.getRight(),
                 dronePosition.getLeft());
     }
 
     private double calculateDistanceToPoint(double lat1, double lng1, double lat2, double lng2) {
-        double earthRadius = 6371;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLng = Math.toRadians(lng2 - lng1);
-        double sindLat = Math.sin(dLat / 2);
-        double sindLng = Math.sin(dLng / 2);
-        double va1 = Math.pow(sindLat, 2) + Math.pow(sindLng, 2)
-                * Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2));
-        double va2 = 2 * Math.atan2(Math.sqrt(va1), Math.sqrt(1 - va1));
-        return earthRadius * va2;
+
+        double rndLat1 = lat1 * Math.PI / 180;
+        double rndLong1 = lng1 * Math.PI / 180;
+        double rndLat2 = lat2 * Math.PI / 180;
+        double rndLong2 = lng2 * Math.PI / 180;
+        return 6378l * Math.acos( Math.cos( rndLat1 ) * Math.cos(( rndLat2 ) * Math.cos(( rndLong2 - rndLong1 ) + Math.sin( rndLat1 ) * Math.sin( rndLat2 ))));
     }
 }
